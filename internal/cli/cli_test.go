@@ -32,6 +32,8 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	os.Setenv("XDG_CONFIG_HOME", dir)
+	os.Setenv("OPENTRUST_ORG_SLUG", "")
+	os.Setenv("OPENTRUST_OFFERING_SLUG", "")
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)
@@ -41,6 +43,8 @@ func run(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
 	t.Setenv("OPENTRUST_API_KEY", "")
 	t.Setenv("OPENTRUST_BASE_URL", "")
+	t.Setenv("OPENTRUST_ORG_SLUG", "")
+	t.Setenv("OPENTRUST_OFFERING_SLUG", "")
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	return execute(args...)
 }
@@ -307,12 +311,12 @@ func TestHelpListsEveryOperation(t *testing.T) {
 
 func commandNames(help string) map[string]bool {
 	const header = "Available Commands:"
-	i := strings.Index(help, header)
-	if i < 0 {
+	_, after, ok := strings.Cut(help, header)
+	if !ok {
 		return nil
 	}
 	names := map[string]bool{}
-	for _, line := range strings.Split(help[i+len(header):], "\n") {
+	for line := range strings.SplitSeq(after, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" {
 			if len(names) > 0 {

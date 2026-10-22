@@ -154,8 +154,145 @@ func TestHelpMentionsConfigFile(t *testing.T) {
 	if code != 0 {
 		t.Fatal(stderr)
 	}
-	if !strings.Contains(stdout, "$XDG_CONFIG_HOME/ot/config.toml") || !strings.Contains(stdout, "base_url") || !strings.Contains(stdout, "api_key") {
+	if !strings.Contains(stdout, "$XDG_CONFIG_HOME/ot/config.toml") || !strings.Contains(stdout, "base_url") || !strings.Contains(stdout, "api_key") || !strings.Contains(stdout, "org_slug") || !strings.Contains(stdout, "offering_slug") {
 		t.Fatalf("help:\n%s", stdout)
+	}
+}
+
+func TestConfigFileSuppliesOrgSlug(t *testing.T) {
+	got := serve(t, `{"ok":true}`)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("OPENTRUST_BASE_URL", "")
+	t.Setenv("OPENTRUST_API_KEY", "")
+	t.Setenv("OPENTRUST_ORG_SLUG", "")
+	writeConfig(t, "base_url = \""+got.url+"\"\napi_key = \"file-key\"\norg_slug = \"northwind\"\n")
+
+	code, stdout, stderr := execute("admin", "get-organization")
+	if code != 0 {
+		t.Fatal(stderr)
+	}
+	if stdout != `{"ok":true}` {
+		t.Fatalf("stdout %s", stdout)
+	}
+	if got.path != "/api/admin/v1/orgs/northwind" || got.auth != "Bearer file-key" {
+		t.Fatalf("path %s auth %s", got.path, got.auth)
+	}
+
+	code, _, stderr = execute("consumer", "get-offering", "--offering-slug", "cloud")
+	if code != 0 {
+		t.Fatal(stderr)
+	}
+	if got.path != "/api/v1/orgs/northwind/offerings/cloud" {
+		t.Fatalf("path %s", got.path)
+	}
+}
+
+func TestEnvironmentAndFlagsOverrideConfigOrgSlug(t *testing.T) {
+	got := serve(t, `{"ok":true}`)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("OPENTRUST_BASE_URL", "")
+	t.Setenv("OPENTRUST_API_KEY", "env-key")
+	writeConfig(t, "base_url = \""+got.url+"\"\norg_slug = \"from-file\"\n")
+
+	t.Setenv("OPENTRUST_ORG_SLUG", "from-env")
+	code, _, stderr := execute("admin", "get-organization")
+	if code != 0 {
+		t.Fatal(stderr)
+	}
+	if got.path != "/api/admin/v1/orgs/from-env" {
+		t.Fatalf("env path %s", got.path)
+	}
+
+	code, _, stderr = execute("admin", "get-organization", "--org-slug", "from-flag")
+	if code != 0 {
+		t.Fatal(stderr)
+	}
+	if got.path != "/api/admin/v1/orgs/from-flag" {
+		t.Fatalf("flag path %s", got.path)
+	}
+}
+
+func TestConfigFileSuppliesOfferingSlug(t *testing.T) {
+	got := serve(t, `{"ok":true}`)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("OPENTRUST_BASE_URL", "")
+	t.Setenv("OPENTRUST_API_KEY", "")
+	t.Setenv("OPENTRUST_ORG_SLUG", "")
+	t.Setenv("OPENTRUST_OFFERING_SLUG", "")
+	writeConfig(t, "base_url = \""+got.url+"\"\napi_key = \"file-key\"\norg_slug = \"northwind\"\noffering_slug = \"cloud\"\n")
+
+	code, stdout, stderr := execute("admin", "list-vulnerabilities")
+	if code != 0 {
+		t.Fatal(stderr)
+	}
+	if stdout != `{"ok":true}` {
+		t.Fatalf("stdout %s", stdout)
+	}
+	if got.path != "/api/admin/v1/orgs/northwind/offerings/cloud/vulnerabilities" || got.auth != "Bearer file-key" {
+		t.Fatalf("path %s auth %s", got.path, got.auth)
+	}
+
+	code, _, stderr = execute("consumer", "get-organization")
+	if code != 0 {
+		t.Fatal(stderr)
+	}
+	if got.path != "/api/v1/orgs/northwind" {
+		t.Fatalf("path %s", got.path)
+	}
+}
+
+func TestEnvironmentAndFlagsOverrideConfigOfferingSlug(t *testing.T) {
+	got := serve(t, `{"ok":true}`)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("OPENTRUST_BASE_URL", "")
+	t.Setenv("OPENTRUST_API_KEY", "env-key")
+	t.Setenv("OPENTRUST_ORG_SLUG", "acme")
+	writeConfig(t, "base_url = \""+got.url+"\"\noffering_slug = \"from-file\"\n")
+
+	t.Setenv("OPENTRUST_OFFERING_SLUG", "from-env")
+	code, _, stderr := execute("admin", "list-vulnerabilities")
+	if code != 0 {
+		t.Fatal(stderr)
+	}
+	if got.path != "/api/admin/v1/orgs/acme/offerings/from-env/vulnerabilities" {
+		t.Fatalf("env path %s", got.path)
+	}
+
+	code, _, stderr = execute("admin", "list-vulnerabilities", "--offering-slug", "from-flag")
+	if code != 0 {
+		t.Fatal(stderr)
+	}
+	if got.path != "/api/admin/v1/orgs/acme/offerings/from-flag/vulnerabilities" {
+		t.Fatalf("flag path %s", got.path)
+	}
+}
+
+func TestBlankConfigOfferingSlugStaysRequired(t *testing.T) {
+	got := serve(t, `{"ok":true}`)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("OPENTRUST_BASE_URL", "")
+	t.Setenv("OPENTRUST_API_KEY", "")
+	t.Setenv("OPENTRUST_ORG_SLUG", "acme")
+	t.Setenv("OPENTRUST_OFFERING_SLUG", "   ")
+	writeConfig(t, "base_url = \""+got.url+"\"\noffering_slug = \"  \"\n")
+
+	code, stdout, stderr := execute("admin", "list-vulnerabilities")
+	if code != 2 || stdout != "" || got.hits != 0 || !strings.Contains(stderr, "offering-slug") {
+		t.Fatalf("exit %d hits %d stdout %q stderr %s", code, got.hits, stdout, stderr)
+	}
+}
+
+func TestBlankConfigOrgSlugStaysRequired(t *testing.T) {
+	got := serve(t, `{"ok":true}`)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("OPENTRUST_BASE_URL", "")
+	t.Setenv("OPENTRUST_API_KEY", "")
+	t.Setenv("OPENTRUST_ORG_SLUG", "   ")
+	writeConfig(t, "base_url = \""+got.url+"\"\norg_slug = \"  \"\n")
+
+	code, stdout, stderr := execute("consumer", "get-organization")
+	if code != 2 || stdout != "" || got.hits != 0 || !strings.Contains(stderr, "org-slug") {
+		t.Fatalf("exit %d hits %d stdout %q stderr %s", code, got.hits, stdout, stderr)
 	}
 }
 

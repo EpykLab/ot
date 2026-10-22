@@ -44,8 +44,7 @@ func Execute(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if err == nil {
 		return 0
 	}
-	var exit *exitError
-	if errors.As(err, &exit) {
+	if exit, ok := errors.AsType[*exitError](err); ok {
 		if exit.msg != "" {
 			fmt.Fprintln(stderr, exit.msg)
 		}
@@ -79,11 +78,13 @@ func (a *app) failf(format string, args ...any) error {
 }
 
 type app struct {
-	name   string
-	stdin  io.Reader
-	stdout io.Writer
-	stderr io.Writer
-	client *http.Client
+	name         string
+	stdin        io.Reader
+	stdout       io.Writer
+	stderr       io.Writer
+	client       *http.Client
+	orgSlug      string
+	offeringSlug string
 }
 
 func (a *app) root() (*cobra.Command, error) {
@@ -96,13 +97,15 @@ Response bodies are written to stdout unchanged so machine-readable JSON keeps i
   %s consumer get-organization --org-slug northwind
   %s admin upsert-offering --org-slug northwind --offering-slug cloud --body '{"name":"Cloud"}'
 
-Set OPENTRUST_BASE_URL and OPENTRUST_API_KEY, or pass --base-url and --api-key.
+Set OPENTRUST_BASE_URL, OPENTRUST_API_KEY, OPENTRUST_ORG_SLUG, and OPENTRUST_OFFERING_SLUG, or pass --base-url, --api-key, --org-slug, and --offering-slug.
 Settings may also live in $XDG_CONFIG_HOME/ot/config.toml, which is ~/.config/ot/config.toml when XDG_CONFIG_HOME is unset:
 
   base_url = "https://trust.example.com"
   api_key = "..."
+  org_slug = "northwind"
+  offering_slug = "cloud"
 
-Flags override those environment variables, which override the file.
+Flags override those environment variables, which override the file. Configured org and offering slugs are used when the matching flags are omitted.
 The admin audience is also available as "management".`, a.name, a.name)
 	root.RunE = func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
@@ -111,6 +114,8 @@ The admin audience is also available as "management".`, a.name, a.name)
 	if err != nil {
 		return nil, err
 	}
+	a.orgSlug = firstNonEmpty(os.Getenv("OPENTRUST_ORG_SLUG"), cfg.OrgSlug)
+	a.offeringSlug = firstNonEmpty(os.Getenv("OPENTRUST_OFFERING_SLUG"), cfg.OfferingSlug)
 	root.PersistentFlags().String("base-url", firstNonEmpty(os.Getenv("OPENTRUST_BASE_URL"), cfg.BaseURL, "http://localhost:3000"), "OpenTrust base URL ($OPENTRUST_BASE_URL, or base_url in config.toml)")
 	root.PersistentFlags().String("api-key", firstNonEmpty(os.Getenv("OPENTRUST_API_KEY"), cfg.APIKey), "Bearer API key ($OPENTRUST_API_KEY, or api_key in config.toml)")
 	root.PersistentFlags().String("out", "", "Write the response body to this file instead of stdout")
@@ -161,8 +166,12 @@ func (a *app) operation(audience string, op openapi.Operation) (*cobra.Command, 
 		if usage == "" {
 			usage = param.Name
 		}
-		cmd.Flags().String(param.Flag, "", usage)
-		if param.In == "path" {
+		value, source := a.flagDefault(param.Flag)
+		if source != "" {
+			usage = strings.TrimSpace(usage + " " + source)
+		}
+		cmd.Flags().String(param.Flag, value, usage)
+		if param.In == "path" && value == "" {
 			if err := cmd.MarkFlagRequired(param.Flag); err != nil {
 				return nil, err
 			}
@@ -186,6 +195,17 @@ func (a *app) operation(audience string, op openapi.Operation) (*cobra.Command, 
 		return a.invoke(cmd, op)
 	}
 	return cmd, nil
+}
+
+func (a *app) flagDefault(flag string) (value, source string) {
+	switch flag {
+	case "org-slug":
+		return a.orgSlug, "($OPENTRUST_ORG_SLUG, or org_slug in config.toml)"
+	case "offering-slug":
+		return a.offeringSlug, "($OPENTRUST_OFFERING_SLUG, or offering_slug in config.toml)"
+	default:
+		return "", ""
+	}
 }
 
 func describe(op openapi.Operation) string {
@@ -466,8 +486,10 @@ func (a *app) endpointURL(baseURL, path string, query url.Values) (string, error
 }
 
 type fileConfig struct {
-	BaseURL string `toml:"base_url"`
-	APIKey  string `toml:"api_key"`
+	BaseURL      string `toml:"base_url"`
+	APIKey       string `toml:"api_key"`
+	OrgSlug      string `toml:"org_slug"`
+	OfferingSlug string `toml:"offering_slug"`
 }
 
 func loadUserConfig() (fileConfig, error) {
@@ -486,8 +508,7 @@ func loadUserConfig() (fileConfig, error) {
 	decoder := toml.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&cfg); err != nil {
-		var strict *toml.StrictMissingError
-		if errors.As(err, &strict) {
+		if strict, ok := errors.AsType[*toml.StrictMissingError](err); ok {
 			names := make([]string, 0, len(strict.Errors))
 			for _, item := range strict.Errors {
 				names = append(names, strings.Join(item.Key(), "."))
@@ -498,6 +519,8 @@ func loadUserConfig() (fileConfig, error) {
 	}
 	cfg.BaseURL = strings.TrimSpace(cfg.BaseURL)
 	cfg.APIKey = strings.TrimSpace(cfg.APIKey)
+	cfg.OrgSlug = strings.TrimSpace(cfg.OrgSlug)
+	cfg.OfferingSlug = strings.TrimSpace(cfg.OfferingSlug)
 	return cfg, nil
 }
 
