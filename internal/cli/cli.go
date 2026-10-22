@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/EpykLab/ot/internal/openapi"
@@ -96,12 +97,22 @@ Response bodies are written to stdout unchanged so machine-readable JSON keeps i
   %s admin upsert-offering --org-slug northwind --offering-slug cloud --body '{"name":"Cloud"}'
 
 Set OPENTRUST_BASE_URL and OPENTRUST_API_KEY, or pass --base-url and --api-key.
+Settings may also live in $XDG_CONFIG_HOME/ot/config.toml, which is ~/.config/ot/config.toml when XDG_CONFIG_HOME is unset:
+
+  base_url = "https://trust.example.com"
+  api_key = "..."
+
+Flags override those environment variables, which override the file.
 The admin audience is also available as "management".`, a.name, a.name)
 	root.RunE = func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
 	}
-	root.PersistentFlags().String("base-url", envOr("OPENTRUST_BASE_URL", "http://localhost:3000"), "OpenTrust base URL ($OPENTRUST_BASE_URL)")
-	root.PersistentFlags().String("api-key", os.Getenv("OPENTRUST_API_KEY"), "Bearer API key ($OPENTRUST_API_KEY)")
+	cfg, err := loadUserConfig()
+	if err != nil {
+		return nil, err
+	}
+	root.PersistentFlags().String("base-url", firstNonEmpty(os.Getenv("OPENTRUST_BASE_URL"), cfg.BaseURL, "http://localhost:3000"), "OpenTrust base URL ($OPENTRUST_BASE_URL, or base_url in config.toml)")
+	root.PersistentFlags().String("api-key", firstNonEmpty(os.Getenv("OPENTRUST_API_KEY"), cfg.APIKey), "Bearer API key ($OPENTRUST_API_KEY, or api_key in config.toml)")
 	root.PersistentFlags().String("out", "", "Write the response body to this file instead of stdout")
 
 	consumerOps, err := openapi.Load("consumer")
@@ -454,9 +465,59 @@ func (a *app) endpointURL(baseURL, path string, query url.Values) (string, error
 	return base.ResolveReference(ref).String(), nil
 }
 
-func envOr(key, fallback string) string {
-	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
-		return value
+type fileConfig struct {
+	BaseURL string `toml:"base_url"`
+	APIKey  string `toml:"api_key"`
+}
+
+func loadUserConfig() (fileConfig, error) {
+	path, err := configPath()
+	if err != nil {
+		return fileConfig{}, err
 	}
-	return fallback
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return fileConfig{}, nil
+	}
+	if err != nil {
+		return fileConfig{}, fmt.Errorf("%s: %w", path, err)
+	}
+	var cfg fileConfig
+	decoder := toml.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&cfg); err != nil {
+		var strict *toml.StrictMissingError
+		if errors.As(err, &strict) {
+			names := make([]string, 0, len(strict.Errors))
+			for _, item := range strict.Errors {
+				names = append(names, strings.Join(item.Key(), "."))
+			}
+			return fileConfig{}, fmt.Errorf("%s: unknown setting %s", path, strings.Join(names, ", "))
+		}
+		return fileConfig{}, fmt.Errorf("%s: %w", path, err)
+	}
+	cfg.BaseURL = strings.TrimSpace(cfg.BaseURL)
+	cfg.APIKey = strings.TrimSpace(cfg.APIKey)
+	return cfg, nil
+}
+
+func configPath() (string, error) {
+	dir := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME"))
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("finding the home directory: %w", err)
+		}
+		dir = filepath.Join(home, ".config")
+	}
+	return filepath.Join(dir, "ot", "config.toml"), nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }

@@ -26,10 +26,22 @@ func execute(args ...string) (int, string, string) {
 	return executeIn("", args...)
 }
 
+func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "ot-empty-config")
+	if err != nil {
+		panic(err)
+	}
+	os.Setenv("XDG_CONFIG_HOME", dir)
+	code := m.Run()
+	os.RemoveAll(dir)
+	os.Exit(code)
+}
+
 func run(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
 	t.Setenv("OPENTRUST_API_KEY", "")
 	t.Setenv("OPENTRUST_BASE_URL", "")
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	return execute(args...)
 }
 
