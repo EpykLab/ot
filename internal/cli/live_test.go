@@ -102,6 +102,37 @@ func TestLiveOpenTrust(t *testing.T) {
 			t.Fatalf("deleted payload exit %d\n%s", code, stderr)
 		}
 	})
+	t.Run("incident updates stay on one public timeline", func(t *testing.T) {
+		created := dataObject(t, liveOK(t, base, env.management, "admin", "create-incident", "--org-slug", env.slug, "--body", `{"title":"Sign-in delays","body":"Customers are seeing slow sign-in.","status":"open","externalId":"cli-incident-1"}`))
+		id, _ := created["id"].(string)
+		updates, _ := created["updates"].([]any)
+		if id == "" || created["status"] != "open" || len(updates) != 1 {
+			t.Fatalf("created %#v", created)
+		}
+		replay := dataObject(t, liveOK(t, base, env.management, "admin", "create-incident", "--org-slug", env.slug, "--body", `{"title":"Sign-in delays","body":"Customers are seeing slow sign-in.","status":"closed","externalId":"cli-incident-1"}`))
+		replayUpdates, _ := replay["updates"].([]any)
+		if replay["id"] != id || replay["status"] != "open" || len(replayUpdates) != 1 {
+			t.Fatalf("replay %#v", replay)
+		}
+		updated := dataObject(t, liveOK(t, base, env.management, "admin", "create-incident-update", "--org-slug", env.slug, "--incident-id", id, "--body", `{"status":"investigating"}`))
+		updatedItems, _ := updated["updates"].([]any)
+		if updated["status"] != "investigating" || len(updatedItems) != 2 {
+			t.Fatalf("updated %#v", updated)
+		}
+		code, _, stderr := liveRun(t, base, env.consumer, "admin", "create-incident-update", "--org-slug", env.slug, "--incident-id", id, "--body", `{"status":"closed"}`)
+		if code != 1 || !strings.Contains(stderr, "returned 403") {
+			t.Fatalf("consumer write exit %d\n%s", code, stderr)
+		}
+		public := dataObject(t, liveOK(t, base, "", "consumer", "get-incident", "--org-slug", env.slug, "--incident-id", id))
+		publicItems, _ := public["updates"].([]any)
+		encoded, err := json.Marshal(public)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if public["title"] != "Sign-in delays" || len(publicItems) != 2 || strings.Contains(string(encoded), "cli-incident-1") || strings.Contains(string(encoded), "externalId") {
+			t.Fatalf("public %#v", public)
+		}
+	})
 	t.Run("vulnerability push is readable with a consumer key", func(t *testing.T) {
 		liveOK(t, base, env.management, "admin", "upsert-offering", "--org-slug", env.slug, "--offering-slug", "platform", "--body", `{"name":"Platform","description":"CLI test offering"}`)
 		created := dataList(t, liveOK(t, base, env.management, "admin", "upsert-vulnerabilities", "--org-slug", env.slug, "--offering-slug", "platform", "--body", `{"vulnerabilities":[{"source":"scanner","externalId":"finding-001","title":"Example finding","severity":"high","status":"open","componentName":"example-package","componentVersion":"1.0.0"}]}`))
