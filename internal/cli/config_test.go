@@ -307,3 +307,17 @@ func writeConfig(t *testing.T, body string) {
 		t.Fatal(err)
 	}
 }
+
+func TestHelpDoesNotExposeConfiguredAPIKey(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	writeConfig(t, "api_key = \"fixture-file-secret\"\n")
+	for _, key := range []string{"", "fixture-environment-secret"} {
+		t.Setenv("OPENTRUST_API_KEY", key)
+		for _, args := range [][]string{{"--help"}, {"admin", "import-weave-release", "--help"}} {
+			code, stdout, stderr := execute(args...)
+			if code != 0 || strings.Contains(stdout+stderr, "fixture-file-secret") || strings.Contains(stdout+stderr, "fixture-environment-secret") {
+				t.Fatalf("help exposed configured key or failed: exit %d", code)
+			}
+		}
+	}
+}

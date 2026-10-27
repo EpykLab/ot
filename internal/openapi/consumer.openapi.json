@@ -46,6 +46,220 @@
     }
   ],
   "paths": {
+    "/api/v1/orgs/{orgSlug}/availability": {
+      "get": {
+        "operationId": "getAvailability",
+        "tags": [
+          "Availability"
+        ],
+        "summary": "Read current and historical availability",
+        "description": "Public aggregate from the same configured monitors and SLO providers used by the uptime page. Current operational status is separate from rolling historical availability; unavailable/unconfigured data is explicit. Individual monitor identifiers, endpoints and backend payloads are never returned. Follow incidentsUrl for paginated incident history. The configured measurement coverage must be reconciled with the offering's core services.",
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "current": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "up",
+                                "degraded",
+                                "down",
+                                "unknown"
+                              ]
+                            },
+                            "updatedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "source": {
+                              "type": "string",
+                              "enum": [
+                                "manual",
+                                "monitor"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "updatedAt",
+                            "source"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "historical": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "availabilityPercent": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "targetPercent": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "objectiveCount": {
+                                  "type": "number"
+                                },
+                                "meetingTargetCount": {
+                                  "type": "number"
+                                },
+                                "windowDays": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "healthy",
+                                    "degrading",
+                                    "violated",
+                                    "no_data",
+                                    "unavailable"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "availabilityPercent",
+                                "targetPercent",
+                                "objectiveCount",
+                                "meetingTargetCount",
+                                "windowDays",
+                                "status"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "incidentsUrl": {
+                          "type": "string"
+                        },
+                        "measurement": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "generatedAt",
+                        "current",
+                        "historical",
+                        "incidentsUrl",
+                        "measurement"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, fields, or query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, revoked, invalid, or wrong-organization credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong key audience, insufficient scope, or organization access policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, offering, or record not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          },
+          {
+            "SessionCookie": []
+          },
+          {
+            "SecureSessionCookie": []
+          }
+        ],
+        "x-api-key-scope": "content:read",
+        "x-api-key-audience": "consumer"
+      }
+    },
     "/api/v1/orgs/{orgSlug}/machine-readables": {
       "get": {
         "operationId": "listMachineReadables",

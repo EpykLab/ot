@@ -119,6 +119,8 @@ The admin audience is also available as "management".`, a.name, a.name)
 	a.offeringSlug = firstNonEmpty(os.Getenv("OPENTRUST_OFFERING_SLUG"), cfg.OfferingSlug)
 	root.PersistentFlags().String("base-url", firstNonEmpty(os.Getenv("OPENTRUST_BASE_URL"), cfg.BaseURL, "http://localhost:3000"), "OpenTrust base URL ($OPENTRUST_BASE_URL, or base_url in config.toml)")
 	root.PersistentFlags().String("api-key", firstNonEmpty(os.Getenv("OPENTRUST_API_KEY"), cfg.APIKey), "Bearer API key ($OPENTRUST_API_KEY, or api_key in config.toml)")
+	// Keep the configured value for execution without exposing it in help.
+	root.PersistentFlags().Lookup("api-key").DefValue = ""
 	root.PersistentFlags().String("out", "", "Write the response body to this file instead of stdout")
 
 	consumerOps, err := openapi.Load("consumer")
