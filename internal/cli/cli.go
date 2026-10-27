@@ -4,6 +4,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -191,6 +192,9 @@ func (a *app) operation(audience string, op openapi.Operation) (*cobra.Command, 
 			cmd.Flags().String(field.Flag, "", usage)
 		}
 	}
+	if paginated(op) {
+		cmd.Flags().Bool("all", false, "Follow all cursor pages and combine data into one JSON response (metadata from the first page)")
+	}
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return a.invoke(cmd, op)
 	}
@@ -304,37 +308,21 @@ func (a *app) invoke(cmd *cobra.Command, op openapi.Operation) error {
 	if err != nil {
 		return err
 	}
-	var body io.Reader
-	if payload != nil {
-		body = bytes.NewReader(payload)
-	}
-	req, err := http.NewRequest(op.Method, endpoint, body)
+	respBody, err := a.fetchResponse(op.Method, endpoint, payload, contentType, apiKey)
 	if err != nil {
-		return a.failf("%s", err)
+		return err
 	}
-	if contentType != "" {
-		req.Header.Set("Content-Type", contentType)
-	}
-	if apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+apiKey)
-	}
-	req.Header.Set("User-Agent", "ot")
-
-	resp, err := a.client.Do(req)
-	if err != nil {
-		return a.failf("%s %s: %s", op.Method, endpoint, err)
-	}
-	defer resp.Body.Close()
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return a.failf("reading %s %s: %s", op.Method, endpoint, err)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		msg := fmt.Sprintf("%s: %s %s returned %d", a.name, op.Method, endpoint, resp.StatusCode)
-		if len(respBody) > 0 {
-			msg += "\n" + string(respBody)
+	if paginated(op) {
+		all, err := cmd.Flags().GetBool("all")
+		if err != nil {
+			return err
 		}
-		return &exitError{code: 1, msg: msg}
+		if all {
+			respBody, err = a.fetchAll(op, baseURL, path, query, apiKey, respBody)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	if outPath != "" {
 		if err := os.WriteFile(outPath, respBody, 0o600); err != nil {
@@ -543,4 +531,117 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// paginated recognizes the API's cursor-paginated GET collection contract.
+func paginated(op openapi.Operation) bool {
+	if op.Method != http.MethodGet {
+		return false
+	}
+	var cursor, limit bool
+	for _, param := range op.Params {
+		if param.In == "query" {
+			cursor = cursor || param.Name == "cursor"
+			limit = limit || param.Name == "limit"
+		}
+	}
+	return cursor && limit
+}
+func (a *app) fetchResponse(method, endpoint string, payload []byte, contentType, apiKey string) ([]byte, error) {
+	var body io.Reader
+	if payload != nil {
+		body = bytes.NewReader(payload)
+	}
+	req, err := http.NewRequest(method, endpoint, body)
+	if err != nil {
+		return nil, a.failf("%s", err)
+	}
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+	if apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+	req.Header.Set("User-Agent", "ot")
+
+	resp, err := a.client.Do(req)
+	if err != nil {
+		return nil, a.failf("%s %s: %s", method, endpoint, err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, a.failf("reading %s %s: %s", method, endpoint, err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		msg := fmt.Sprintf("%s: %s %s returned %d", a.name, method, endpoint, resp.StatusCode)
+		if len(respBody) > 0 {
+			msg += "\n" + string(respBody)
+		}
+		return nil, &exitError{code: 1, msg: msg}
+	}
+	return respBody, nil
+}
+
+// Default invocations preserve response bytes. Only --all combines the page envelopes.
+func (a *app) fetchAll(op openapi.Operation, baseURL, path string, query url.Values, apiKey string, body []byte) ([]byte, error) {
+	var envelope map[string]json.RawMessage
+	var combined []json.RawMessage = make([]json.RawMessage, 0)
+	seen := map[string]bool{}
+	if cursor := query.Get("cursor"); cursor != "" {
+		seen[cursor] = true
+	}
+	for {
+		var page map[string]json.RawMessage
+		if err := json.Unmarshal(body, &page); err != nil {
+			return nil, a.failf("invalid JSON page: %s", err)
+		}
+		if envelope == nil {
+			envelope = page
+		}
+		var data []json.RawMessage
+		raw, ok := page["data"]
+		if !ok || len(raw) == 0 || raw[0] != '[' {
+			return nil, a.failf("paginated response must contain a data array")
+		}
+		if err := json.Unmarshal(raw, &data); err != nil {
+			return nil, a.failf("invalid data array: %s", err)
+		}
+		combined = append(combined, data...)
+		raw, ok = page["nextCursor"]
+		if !ok {
+			return nil, a.failf("paginated response is missing nextCursor")
+		}
+		if string(raw) == "null" {
+			break
+		}
+		var cursor string
+		if err := json.Unmarshal(raw, &cursor); err != nil || cursor == "" {
+			return nil, a.failf("paginated response has an invalid nextCursor")
+		}
+		if seen[cursor] {
+			return nil, a.failf("pagination returned a repeated cursor")
+		}
+		seen[cursor] = true
+		query.Set("cursor", cursor)
+		endpoint, err := a.endpointURL(baseURL, path, query)
+		if err != nil {
+			return nil, err
+		}
+		body, err = a.fetchResponse(op.Method, endpoint, nil, "", apiKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+	data, err := json.Marshal(combined)
+	if err != nil {
+		return nil, a.failf("encoding paginated data: %s", err)
+	}
+	envelope["data"] = data
+	envelope["nextCursor"] = json.RawMessage("null")
+	result, err := json.Marshal(envelope)
+	if err != nil {
+		return nil, a.failf("encoding paginated response: %s", err)
+	}
+	return append(result, '\n'), nil
 }

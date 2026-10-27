@@ -13,6 +13,10 @@
   ],
   "tags": [
     {
+      "name": "Certification",
+      "description": "Versioned publication, original documents, report snapshots, agency inventory and access evidence."
+    },
+    {
       "name": "Machine-readable",
       "description": "Configurable public and protected raw JSON documents with stable URLs."
     },
@@ -49,7 +53,7 @@
           "Machine-readable"
         ],
         "summary": "List accessible machine-readable documents",
-        "description": "List metadata and stable raw JSON URLs. Anonymous readers see public documents; verified, administrator-approved customers also see authenticated documents; organization members and content:read keys see all documents. Payloads are fetched separately.",
+        "description": "List metadata and stable raw JSON URLs. Anonymous readers see public documents; verified, administrator-approved customers, organization members and content:read keys can read protected documents. Payloads are fetched separately.",
         "parameters": [
           {
             "name": "orgSlug",
@@ -59,7 +63,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "orgSlug from the organization or offering URL."
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
           },
           {
             "name": "limit",
@@ -197,7 +201,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "orgSlug from the organization or offering URL."
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
           },
           {
             "name": "documentSlug",
@@ -314,7 +318,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "orgSlug from the organization or offering URL."
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
           },
           {
             "name": "documentSlug",
@@ -420,7 +424,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "orgSlug from the organization or offering URL."
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
           },
           {
             "name": "limit",
@@ -558,7 +562,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "orgSlug from the organization or offering URL."
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
           },
           {
             "name": "subprocessorSlug",
@@ -658,6 +662,102 @@
         "x-api-key-audience": "consumer"
       }
     },
+    "/api/v1/organization": {
+      "get": {
+        "operationId": "getSiteOrganization",
+        "tags": [
+          "Organization"
+        ],
+        "summary": "Read the site-root organization",
+        "description": "Public identity for the organization served at the site root, including its slug. Use this when a trust-center URL has no organization segment.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Organization"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, fields, or query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, revoked, invalid, or wrong-organization credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong key audience, insufficient scope, or organization access policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, offering, or record not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          },
+          {
+            "SessionCookie": []
+          },
+          {
+            "SecureSessionCookie": []
+          }
+        ],
+        "x-api-key-scope": "content:read",
+        "x-api-key-audience": "consumer"
+      }
+    },
     "/api/v1/orgs/{orgSlug}": {
       "get": {
         "operationId": "getOrganization",
@@ -675,7 +775,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "orgSlug from the organization or offering URL."
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
           }
         ],
         "responses": {
@@ -1027,7 +1127,7 @@
           "Compliance"
         ],
         "summary": "List offerings",
-        "description": "List the organization\u2019s public products and services.",
+        "description": "List the organization’s public products and services.",
         "parameters": [
           {
             "name": "orgSlug",
@@ -1037,7 +1137,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "orgSlug from the organization or offering URL."
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
           },
           {
             "name": "limit",
@@ -1175,7 +1275,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "orgSlug from the organization or offering URL."
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
           },
           {
             "name": "offeringSlug",
@@ -1185,7 +1285,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "offeringSlug from the organization or offering URL."
+            "description": "Offering slug, the path segment after the organization slug."
           }
         ],
         "responses": {
@@ -1292,7 +1392,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "orgSlug from the organization or offering URL."
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
           },
           {
             "name": "offeringSlug",
@@ -1302,7 +1402,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "offeringSlug from the organization or offering URL."
+            "description": "Offering slug, the path segment after the organization slug."
           },
           {
             "name": "limit",
@@ -1440,7 +1540,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "orgSlug from the organization or offering URL."
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
           },
           {
             "name": "offeringSlug",
@@ -1450,7 +1550,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "offeringSlug from the organization or offering URL."
+            "description": "Offering slug, the path segment after the organization slug."
           },
           {
             "name": "limit",
@@ -1578,7 +1678,7 @@
           "Resources"
         ],
         "summary": "Read a resource",
-        "description": "Read the resource\u2019s content and metadata, subject to its visibility.",
+        "description": "Read the resource’s content and metadata, subject to its visibility.",
         "parameters": [
           {
             "name": "orgSlug",
@@ -1588,7 +1688,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "orgSlug from the organization or offering URL."
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
           },
           {
             "name": "offeringSlug",
@@ -1598,7 +1698,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "offeringSlug from the organization or offering URL."
+            "description": "Offering slug, the path segment after the organization slug."
           },
           {
             "name": "resourceSlug",
@@ -1715,7 +1815,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "orgSlug from the organization or offering URL."
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
           },
           {
             "name": "offeringSlug",
@@ -1725,7 +1825,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "offeringSlug from the organization or offering URL."
+            "description": "Offering slug, the path segment after the organization slug."
           },
           {
             "name": "limit",
@@ -1913,7 +2013,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "orgSlug from the organization or offering URL."
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
           },
           {
             "name": "offeringSlug",
@@ -1923,7 +2023,7 @@
               "type": "string",
               "minLength": 1
             },
-            "description": "offeringSlug from the organization or offering URL."
+            "description": "Offering slug, the path segment after the organization slug."
           },
           {
             "name": "findingId",
@@ -2021,6 +2121,712 @@
         "x-api-key-scope": "vulnerabilities:read",
         "x-api-key-audience": "consumer"
       }
+    },
+    "/api/v1/orgs/{orgSlug}/offerings/{offeringSlug}/certification/materials": {
+      "get": {
+        "operationId": "listCertificationMaterials",
+        "tags": [
+          "Certification"
+        ],
+        "summary": "Discover all accessible certification material versions",
+        "description": "Paginated published versions with metadata, extracted human-readable text, checksums and original-byte download URLs. Includes retained historical versions. Public materials need no credentials; protected materials require an approved session or content:read key. Never exposes internal knowledge.",
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
+          },
+          {
+            "name": "offeringSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Offering slug, the path segment after the organization slug."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CertificationMaterial"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "nextCursor"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, fields, or query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, revoked, invalid, or wrong-organization credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong key audience, insufficient scope, or organization access policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, offering, or record not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          },
+          {
+            "SessionCookie": []
+          },
+          {
+            "SecureSessionCookie": []
+          }
+        ],
+        "x-api-key-scope": "content:read",
+        "x-api-key-audience": "consumer"
+      }
+    },
+    "/api/v1/orgs/{orgSlug}/offerings/{offeringSlug}/certification/materials/{materialId}": {
+      "get": {
+        "operationId": "getCertificationMaterial",
+        "tags": [
+          "Certification"
+        ],
+        "summary": "Read a certification material version",
+        "description": "Read the published version and policy reference metadata. Authorization is identical for the human-readable page and original download. SHA-256 identifies original bytes.",
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
+          },
+          {
+            "name": "offeringSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Offering slug, the path segment after the organization slug."
+          },
+          {
+            "name": "materialId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "materialId from the organization or offering URL."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CertificationMaterial"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, fields, or query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, revoked, invalid, or wrong-organization credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong key audience, insufficient scope, or organization access policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, offering, or record not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          },
+          {
+            "SessionCookie": []
+          },
+          {
+            "SecureSessionCookie": []
+          }
+        ],
+        "x-api-key-scope": "content:read",
+        "x-api-key-audience": "consumer"
+      }
+    },
+    "/api/v1/orgs/{orgSlug}/offerings/{offeringSlug}/certification/materials/{materialId}/download": {
+      "get": {
+        "operationId": "downloadCertificationMaterial",
+        "tags": [
+          "Certification"
+        ],
+        "summary": "Download original certification material bytes",
+        "description": "Noninteractive retrieval using the same content:read Bearer key. Verifies stored length and SHA-256 before returning bytes. No redirect to object storage. ETag contains the SHA-256. Revocation is checked on every request.",
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
+          },
+          {
+            "name": "offeringSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Offering slug, the path segment after the organization slug."
+          },
+          {
+            "name": "materialId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "materialId from the organization or offering URL."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, fields, or query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, revoked, invalid, or wrong-organization credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong key audience, insufficient scope, or organization access policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, offering, or record not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          },
+          {
+            "SessionCookie": []
+          },
+          {
+            "SecureSessionCookie": []
+          }
+        ],
+        "x-api-key-scope": "content:read",
+        "x-api-key-audience": "consumer"
+      }
+    },
+    "/api/v1/orgs/{orgSlug}/offerings/{offeringSlug}/certification/snapshots": {
+      "get": {
+        "operationId": "listCertificationSnapshots",
+        "tags": [
+          "Certification"
+        ],
+        "summary": "List ongoing-report snapshots",
+        "description": "Approved readers can retrieve immutable report-to-material-version mappings. Follow materialIds through material metadata and original downloads. Historical snapshots remain retained; operators must reconcile package completeness.",
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
+          },
+          {
+            "name": "offeringSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Offering slug, the path segment after the organization slug."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CertificationSnapshot"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "nextCursor"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, fields, or query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, revoked, invalid, or wrong-organization credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong key audience, insufficient scope, or organization access policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, offering, or record not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "SessionCookie": []
+          },
+          {
+            "SecureSessionCookie": []
+          }
+        ],
+        "x-api-key-scope": "content:read",
+        "x-api-key-audience": "consumer"
+      }
+    },
+    "/api/v1/orgs/{orgSlug}/access-summaries": {
+      "get": {
+        "operationId": "exportAccessSummaries",
+        "tags": [
+          "Certification"
+        ],
+        "summary": "Export access summaries",
+        "description": "Consumer interface derives agency/account filters from the authenticated identity; request-supplied agency filters cannot broaden access. Management interface exports the organization. Daily UTC summaries are updated atomically on access and retained for at least six calendar months after day end. prepared means a response was prepared, not received or read. Follow nextCursor until null. Missing rows do not prove no gaps.",
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Case-insensitive search across principal, agency, target, and action; individual events also search request ID.",
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "outcome",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "prepared",
+                "denied",
+                "missing",
+                "failed"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "nextCursor"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, fields, or query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, revoked, invalid, or wrong-organization credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong key audience, insufficient scope, or organization access policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, offering, or record not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "SessionCookie": []
+          },
+          {
+            "SecureSessionCookie": []
+          }
+        ],
+        "x-api-key-scope": "content:read",
+        "x-api-key-audience": "consumer"
+      }
     }
   },
   "components": {
@@ -2045,6 +2851,150 @@
       }
     },
     "schemas": {
+      "CertificationMaterial": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "offeringId": {
+            "type": "string"
+          },
+          "fedrampId": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "authenticated",
+              "restricted"
+            ]
+          },
+          "body": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "byteLength": {
+            "type": "number"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "wordCount": {
+                "type": "number"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "practices": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "summary",
+              "wordCount",
+              "updatedAt",
+              "practices"
+            ],
+            "additionalProperties": false
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "downloadUrl": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "organizationId",
+          "offeringId",
+          "fedrampId",
+          "slug",
+          "version",
+          "title",
+          "visibility",
+          "body",
+          "filename",
+          "contentType",
+          "sha256",
+          "byteLength",
+          "metadata",
+          "createdAt",
+          "downloadUrl",
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "CertificationSnapshot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "offeringId": {
+            "type": "string"
+          },
+          "fedrampId": {
+            "type": "string"
+          },
+          "reportId": {
+            "type": "string"
+          },
+          "materialIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "organizationId",
+          "offeringId",
+          "fedrampId",
+          "reportId",
+          "materialIds",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
       "MachineReadable": {
         "type": "object",
         "properties": {

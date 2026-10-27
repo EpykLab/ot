@@ -163,7 +163,7 @@ func parse(raw []byte) ([]Operation, error) {
 func checkFlags(op Operation) error {
 	reserved := map[string]bool{
 		"body": true, "body-file": true, "file": true,
-		"out": true, "api-key": true, "base-url": true, "help": true,
+		"all": true, "out": true, "api-key": true, "base-url": true, "help": true,
 	}
 	seen := map[string]struct{}{}
 	for _, param := range op.Params {
