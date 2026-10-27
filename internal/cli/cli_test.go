@@ -85,6 +85,8 @@ func operationCalls() []operationCall {
 		"category": {"Policies"}, "source": {"file"},
 	}
 	return []operationCall{
+		{audience: "consumer", command: "get-availability", args: []string{"--org-slug", "acme"}, method: "GET", path: "/api/v1/orgs/acme/availability"},
+		{audience: "admin", command: "get-availability", key: "mgmt", args: []string{"--org-slug", "acme"}, method: "GET", path: "/api/admin/v1/orgs/acme/availability"},
 		{audience: "consumer", command: "export-audit-events", key: "reader", args: []string{"--org-slug", "acme", "--limit", "2", "--cursor", "next", "--q", "material one", "--outcome", "denied"}, method: "GET", path: "/api/v1/orgs/acme/audit-events", query: url.Values{"limit": {"2"}, "cursor": {"next"}, "q": {"material one"}, "outcome": {"denied"}}},
 		{audience: "consumer", command: "get-site-organization", key: "", args: []string{}, method: "GET", path: "/api/v1/organization"},
 		{audience: "consumer", command: "list-certification-materials", key: "", args: []string{"--org-slug", "acme", "--offering-slug", "cloud", "--limit", "2", "--cursor", "next"}, method: "GET", path: "/api/v1/orgs/acme/offerings/cloud/certification/materials", query: url.Values{"limit": {"2"}, "cursor": {"next"}}},
