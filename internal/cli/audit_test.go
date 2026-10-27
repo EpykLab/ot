@@ -103,7 +103,7 @@ func TestAuditDefaultPreservesJSONBytes(t *testing.T) {
 		t.Fatalf("help: %s %s", stdout, stderr)
 	}
 	code, stdout, _ = run(t, "consumer", "--help")
-	if code != 0 || strings.Contains(stdout, "export-audit-events") {
-		t.Fatal("individual audit events must remain management-only")
+	if code != 0 || !strings.Contains(stdout, "export-audit-events") {
+		t.Fatal("Consumer help must expose party-scoped audit events")
 	}
 }

@@ -8,7 +8,7 @@ Install from this checkout:
 go install ./cmd/ot ./cmd/opentrust
 ```
 
-Configure `OPENTRUST_BASE_URL`, `OPENTRUST_ORG_SLUG`, and `OPENTRUST_API_KEY`, or use `~/.config/ot/config.toml`. Use an existing Management key with `content:read` for organization-wide audit exports. Consumer keys can retrieve only their authorized agency/account summaries. Keep credentials out of command arguments and exported files.
+Configure `OPENTRUST_BASE_URL`, `OPENTRUST_ORG_SLUG`, and `OPENTRUST_API_KEY`, or use `~/.config/ot/config.toml`. Use an existing Management key with `content:read` for organization-wide audit exports. Consumer keys can retrieve only their authorized agency/account events and summaries. Keep credentials out of command arguments and exported files.
 
 ## Retrieve audit evidence
 
@@ -18,8 +18,11 @@ ot admin export-audit-events --outcome denied --q certification --all --out deni
 ot admin export-access-summaries --all --out access-summaries.json
 ot admin export-agency-history --all --out agency-history.json
 ot admin export-agency-inventory --all --out agency-inventory.json
+ot consumer export-audit-events --all --out my-audit-events.json
 ot consumer export-access-summaries --all --out my-access-summaries.json
 ```
+
+Consumer event and summary queries derive the agency boundary from the authenticated identity, or fall back to that principal alone when no agency affiliation is recorded. Request-supplied identities and cursors cannot broaden this boundary. The signed-in portal links to **My access logs** at `/account/access`.
 
 Individual audit events are newest first by timestamp and ID. They include principal/agency, target/version, action, outcome, HTTP status, request ID, and observation time. `prepared` means the server prepared a response; it does not establish receipt or reading. Missing records do not prove uninterrupted coverage.
 

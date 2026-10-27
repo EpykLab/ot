@@ -5602,7 +5602,7 @@
           "Certification"
         ],
         "summary": "Export individual audit requests",
-        "description": "Management only. Returns the publishing organization's observed certification access requests, newest first by createdAt and ID. Supports q and outcome filters before pagination. Follow opaque nextCursor until null. prepared means a server response was prepared, not received or read. Missing rows do not establish uninterrupted coverage. No credentials, request headers, or payloads are exported.",
+        "description": "Consumer exports are restricted to the authenticated agency, or the authenticated principal if no agency affiliation is recorded. Caller-supplied agency/principal filters and cursors cannot broaden access. Management exports cover the publishing organization. Returns observed certification access requests, newest first by createdAt and ID. Supports q and outcome filters before pagination. Follow opaque nextCursor until null. prepared means a response was prepared, not received or read. Missing rows do not establish uninterrupted coverage. No credentials, request headers, or payloads are exported.",
         "parameters": [
           {
             "name": "orgSlug",
