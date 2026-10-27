@@ -5040,6 +5040,199 @@
         "x-api-key-audience": "management"
       }
     },
+    "/api/admin/v1/orgs/{orgSlug}/offerings/{offeringSlug}/certification/releases": {
+      "post": {
+        "operationId": "importWeaveRelease",
+        "tags": [
+          "Certification"
+        ],
+        "summary": "Import an immutable native Weave release",
+        "description": "Management only. Upload the native .tar.gz as multipart file (64 MB compressed, 128 MB expanded, 5000 files). Verifies the complete manifest and every file hash, rejects unsafe paths/links/duplicates, and atomically retains public/protected originals. Internal snapshot/evidence-source files are verified but never published. Matching organization release routes preserve exact JSON/HTML/PDF/image links and public/protected audiences. Identical manifest retries are safe; conflicting digests fail. Import verifies bytes and does not grant human assurance, certify the offering, or automatically replace the canonical overview.",
+        "parameters": [
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Organization slug shown on the trust center home page. GET /api/v1/organization returns it for the site-root organization."
+          },
+          {
+            "name": "offeringSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Offering slug, the path segment after the organization slug."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "weave_release"
+                        },
+                        "digest": {
+                          "type": "string"
+                        },
+                        "manifestSha256": {
+                          "type": "string"
+                        },
+                        "archiveSha256": {
+                          "type": "string"
+                        },
+                        "coverage": {
+                          "type": "string"
+                        },
+                        "fileCount": {
+                          "type": "number"
+                        },
+                        "paths": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "reused": {
+                          "type": "boolean"
+                        },
+                        "url": {
+                          "type": "string"
+                        },
+                        "integrity": {
+                          "type": "string"
+                        },
+                        "assurance": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "digest",
+                        "manifestSha256",
+                        "archiveSha256",
+                        "coverage",
+                        "fileCount",
+                        "paths",
+                        "reused",
+                        "url",
+                        "integrity",
+                        "assurance"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, fields, or query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, revoked, invalid, or wrong-organization credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong key audience, insufficient scope, or organization access policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization, offering, or record not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request body exceeds JSON or file upload limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported content type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-api-key-scope": "content:write",
+        "x-api-key-audience": "management",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/WeaveReleaseUpload"
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/v1/orgs/{orgSlug}/offerings/{offeringSlug}/certification/snapshots": {
       "get": {
         "operationId": "listCertificationSnapshots",
@@ -6552,6 +6745,18 @@
       }
     },
     "schemas": {
+      "WeaveReleaseUpload": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "additionalProperties": false
+      },
       "CertificationMaterialInput": {
         "type": "object",
         "properties": {
